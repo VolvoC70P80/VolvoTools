@@ -1,0 +1,44 @@
+name: Build C70Reader x86
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - 'C70Reader/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/c70reader.yml'
+
+jobs:
+  build-c70reader-x86:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Conan and detect profile
+        run: |
+          pip install conan
+          conan profile detect --force
+
+      - name: Install dependencies
+        run: >-
+          conan install . --build=missing --profile=default -s arch=x86 -s compiler.cppstd=20
+
+      - name: Configure CMake
+        run: cmake --preset conan-default -A Win32
+
+      - name: Build C70Reader
+        run: |
+          cd build
+          cmake --build . --config Release --target C70Reader --parallel 4
+
+      - name: Upload C70Reader artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: C70Reader_x86
+          path: build/**/Release/C70Reader.exe
+          if-no-files-found: error
