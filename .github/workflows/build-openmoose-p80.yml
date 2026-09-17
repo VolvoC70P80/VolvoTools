@@ -1,0 +1,67 @@
+name: Build OpenMoose P80 GODIAG
+
+on:
+  push:
+    branches:
+      - openmoose-p80-godiag-build
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout helper repo
+        uses: actions/checkout@v4
+
+      - name: Clone OpenMoose
+        shell: powershell
+        run: |
+          git clone --depth 1 https://github.com/rlinewiz/OpenMoose.git OpenMoose
+
+      - name: Patch OpenMoose source for P80 / 250 kbit / x86
+        shell: powershell
+        run: |
+          $src = 'OpenMoose\frmMain.cs'
+          $text = Get-Content $src -Raw
+
+          if (-not $text.Contains('this.dice.setHSBaud(BaudRate.CAN_500000);')) {
+            throw 'Expected 500 kbit line not found'
+          }
+          $text = $text.Replace('this.dice.setHSBaud(BaudRate.CAN_500000);', 'this.dice.setHSBaud(BaudRate.CAN_250000);')
+
+          if (-not $text.Contains('this.dice = new ToolComm();')) {
+            throw 'ToolComm constructor line not found'
+          }
+          $text = $text.Replace('this.dice = new ToolComm();', "this.dice = new ToolComm();`r`n      this.p80 = true;")
+          Set-Content $src $text -Encoding UTF8
+
+          $proj = 'OpenMoose\OpenMooseRedux.csproj'
+          $p = Get-Content $proj -Raw
+          $p = $p.Replace('<PlatformTarget>AnyCPU</PlatformTarget>', '<PlatformTarget>x86</PlatformTarget>')
+          Set-Content $proj $p -Encoding UTF8
+
+          Write-Host 'Patched source:'
+          Select-String -Path $src -Pattern 'setHSBaud|p80 = true' -Context 0,1
+          Select-String -Path $proj -Pattern 'PlatformTarget'
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Release
+        shell: powershell
+        run: |
+          msbuild OpenMoose\OpenMooseRedux.sln /m /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU /p:PlatformTarget=x86
+
+      - name: Package
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force artifact | Out-Null
+          Copy-Item OpenMoose\bin\Release\* artifact\ -Recurse -Force
+          Get-ChildItem artifact
+          Compress-Archive -Path artifact\* -DestinationPath OpenMoose_P80_GODIAG_x86.zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenMoose_P80_GODIAG_x86
+          path: OpenMoose_P80_GODIAG_x86.zip
