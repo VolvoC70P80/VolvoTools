@@ -38,11 +38,12 @@ jobs:
           $proj = 'OpenMoose\OpenMooseRedux.csproj'
           $p = Get-Content $proj -Raw
           $p = $p.Replace('<PlatformTarget>AnyCPU</PlatformTarget>', '<PlatformTarget>x86</PlatformTarget>')
+          $p = $p.Replace('<TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>', '<TargetFrameworkVersion>v4.8</TargetFrameworkVersion>')
           Set-Content $proj $p -Encoding UTF8
 
           Write-Host 'Patched source:'
           Select-String -Path $src -Pattern 'setHSBaud|p80 = true' -Context 0,1
-          Select-String -Path $proj -Pattern 'PlatformTarget'
+          Select-String -Path $proj -Pattern 'PlatformTarget|TargetFrameworkVersion'
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
