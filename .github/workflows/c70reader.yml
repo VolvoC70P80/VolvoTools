@@ -36,6 +36,14 @@ jobs:
           cd build
           cmake --build . --config Release --target C70Reader --parallel 4
 
+      - name: Run offline protocol self-test
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path build -Recurse -Filter C70Reader.exe | Where-Object { $_.FullName -match '\\Release\\' } | Select-Object -First 1
+          if (-not $exe) { throw 'C70Reader.exe not found' }
+          & $exe.FullName --selftest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Upload C70Reader artifact
         uses: actions/upload-artifact@v4
         with:
