@@ -46,11 +46,13 @@ jobs:
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x86
 
       - name: Build Release
         shell: powershell
         run: |
-          msbuild OpenMoose\OpenMooseRedux.sln /m /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU /p:PlatformTarget=x86
+          msbuild OpenMoose\OpenMooseRedux.sln /m /t:Rebuild /p:Configuration=Release '/p:Platform=Any CPU' /p:PlatformTarget=x86
 
       - name: Package
         shell: powershell
